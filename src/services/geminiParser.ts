@@ -43,7 +43,7 @@ Guidelines:
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-1.5-pro",
+      model: "gemini-2.5-flash",
       contents: userInput,
       config: {
         systemInstruction,
