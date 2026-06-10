@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/core/supabaseClient";
 import { parseNaturalLanguageInput } from "@/services/geminiParser";
 import { calculateEmission } from "@/services/carbonCalculator";
-import { generateContextualInsights } from "@/services/geminiCoach";
+import { generateContextualInsights, HistoricalLogInput } from "@/services/geminiCoach";
+import { UserProfile } from "@/core/types";
 
 interface LogRequestPayload {
   prompt: string;
@@ -43,7 +44,7 @@ export async function POST(request: Request) {
     // 2. Fetch User profile (or insert on-the-fly to ensure seamless user testing experience)
     const { data: userProfile, error: profileError } = await supabaseAdmin
       .from("users")
-      .select("id, current_streak, xp, badges")
+      .select("id, email, created_at, current_streak, xp, badges")
       .eq("id", userId)
       .maybeSingle();
 
@@ -52,12 +53,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Database transaction lookup failed." }, { status: 500 });
     }
 
-    let activeUserProfile: {
-      id: string;
-      current_streak: number;
-      xp: number;
-      badges: string[];
-    };
+    let activeUserProfile: UserProfile;
 
     if (!userProfile) {
       // Automatic lazy initialization of user profiles for ease of evaluation testing
@@ -70,18 +66,17 @@ export async function POST(request: Request) {
           xp: 0,
           badges: [],
         })
-        .select()
+        .select("id, email, created_at, current_streak, xp, badges")
         .single();
 
       if (createError || !newUser) {
         console.error("[DB_PROFILE_CREATE_ERROR]:", createError?.message || "User profile creation yielded null.");
         return NextResponse.json({ error: "User initialization failed." }, { status: 500 });
       }
-      activeUserProfile = newUser as any;
+      activeUserProfile = newUser as UserProfile;
     } else {
-      activeUserProfile = userProfile as any;
+      activeUserProfile = userProfile as UserProfile;
     }
-
 
     // 3. Process natural language query through Gemini Parser Engine
     const parsedInput = await parseNaturalLanguageInput(prompt);
@@ -115,21 +110,18 @@ export async function POST(request: Request) {
     } else {
       const lastLogDate = new Date(lastLogs[0].logged_at);
       
-      // Calculate date difference in days (calendar days)
-      const diffTime = Math.abs(now.getTime() - lastLogDate.getTime());
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      // Calculate date difference in UTC calendar days to be immune to timezone/execution delays
+      const nowUtc = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+      const lastLogUtc = Date.UTC(lastLogDate.getUTCFullYear(), lastLogDate.getUTCMonth(), lastLogDate.getUTCDate());
+      const diffDays = Math.round((nowUtc - lastLogUtc) / (1000 * 60 * 60 * 24));
 
-      const isSameDay = now.getUTCFullYear() === lastLogDate.getUTCFullYear() &&
-                        now.getUTCMonth() === lastLogDate.getUTCMonth() &&
-                        now.getUTCDate() === lastLogDate.getUTCDate();
-
-      if (isSameDay) {
+      if (diffDays === 0) {
         // Logged again on the same day, preserve streak
-      } else if (diffDays <= 1) {
+      } else if (diffDays === 1) {
         // Logged on the consecutive day, increment streak
         newStreak += 1;
       } else {
-        // Streak broken, reset to 1
+        // Streak broken (more than 1 day difference), reset to 1
         newStreak = 1;
       }
     }
@@ -139,7 +131,7 @@ export async function POST(request: Request) {
     const newXp = activeUserProfile.xp + gainedXp;
 
     // Check for badge unlocks based on new stats
-    const updatedBadges = [...(activeUserProfile.badges as string[])];
+    const updatedBadges = [...activeUserProfile.badges];
     if (newStreak >= 7 && !updatedBadges.includes("streak_champion")) {
       updatedBadges.push("streak_champion");
     }
@@ -188,7 +180,14 @@ export async function POST(request: Request) {
       .order("logged_at", { ascending: false })
       .limit(10);
 
-    const coachingData = await generateContextualInsights(updatedLogsHistory || [], newStreak);
+    // Cast database records to expected interface safely
+    const formattedHistory: HistoricalLogInput[] = (updatedLogsHistory || []).map(log => ({
+      category: log.category,
+      calculated_co2_kg: Number(log.calculated_co2_kg),
+      logged_at: log.logged_at,
+    }));
+
+    const coachingData = await generateContextualInsights(formattedHistory, newStreak);
 
     // Upsert AI insights cache record
     const { error: insightsUpsertError } = await supabaseAdmin

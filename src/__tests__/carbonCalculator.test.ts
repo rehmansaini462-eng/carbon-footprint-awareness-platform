@@ -1,4 +1,4 @@
-import { calculateEmission } from "../services/carbonCalculator";
+import { calculateEmission, CarbonCategory } from "../services/carbonCalculator";
 
 describe("Carbon Footprint Calculation Engine", () => {
   // 1. Valid Input Tests
@@ -43,7 +43,7 @@ describe("Carbon Footprint Calculation Engine", () => {
 
     test("Throw error on invalid carbon category parameter lookup", () => {
       expect(() => {
-        calculateEmission("InvalidCategory" as any, "ev", 10);
+        calculateEmission("InvalidCategory" as unknown as CarbonCategory, "ev", 10);
       }).toThrow("Invalid carbon category");
     });
 

@@ -9,9 +9,7 @@ import {
   PieChart as PieIcon, 
   TrendingDown, 
   Cpu, 
-  MapPin, 
   CheckCircle2, 
-  HelpCircle,
   Footprints
 } from "lucide-react";
 import { 
@@ -19,35 +17,10 @@ import {
   PieChart, 
   Pie, 
   Cell, 
-  BarChart, 
-  Bar, 
-  XAxis, 
-  YAxis, 
-  Tooltip, 
-  Legend 
+  Tooltip 
 } from "recharts";
 
-type CarbonCategory = "Transport" | "Energy" | "Food";
-
-// Helper type matching database models
-interface CarbonLog {
-  id?: string;
-  category: "Transport" | "Energy" | "Food";
-  specificType: string;
-  rawValue: number;
-  calculatedCo2Kg: number;
-  loggedAt: string;
-}
-
-interface CoachInsights {
-  eco_score: number;
-  context_summary: string;
-  micro_challenges: Array<{
-    title: string;
-    action: string;
-    saved_co2_kg: number;
-  }>;
-}
+import { CarbonLog, CoachInsights } from "@/core/types";
 
 const CATEGORY_COLORS = {
   Transport: "#06b6d4", // Cyan
@@ -95,6 +68,7 @@ export default function DashboardPage() {
   });
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMounted(true);
     // Initialize user session configuration
     if (typeof window !== "undefined") {
@@ -176,9 +150,9 @@ export default function DashboardPage() {
 
       setPromptInput("");
       setMessage({ text: `Success! Recorded ${data.calculatedCo2Kg}kg CO2e. Gained +${data.gainedXp} XP!`, isError: false });
-    } catch (err: any) {
-      console.error(err);
-      setMessage({ text: err.message || "Failed to contact backend API.", isError: true });
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : "Failed to contact backend API.";
+      setMessage({ text: errMsg, isError: true });
     } finally {
       setLoading(false);
     }
@@ -460,7 +434,7 @@ export default function DashboardPage() {
                       </Pie>
                       <Tooltip 
                         contentStyle={{ backgroundColor: "#0f172a", border: "1px solid #334155", borderRadius: "8px", color: "#e2e8f0" }}
-                        formatter={(val: any) => [`${Number(val).toFixed(2)} kg CO₂`, "Emissions"]}
+                        formatter={(val: unknown) => [`${Number(val).toFixed(2)} kg CO₂`, "Emissions"]}
                       />
                     </PieChart>
                   </ResponsiveContainer>
@@ -493,7 +467,7 @@ export default function DashboardPage() {
 
             <div className="bg-emerald-500/5 border border-emerald-500/10 p-4 rounded-xl mb-6">
               <p className="text-xs text-emerald-300/90 leading-relaxed font-medium">
-                "{insights.context_summary}"
+                &quot;{insights.context_summary}&quot;
               </p>
             </div>
 

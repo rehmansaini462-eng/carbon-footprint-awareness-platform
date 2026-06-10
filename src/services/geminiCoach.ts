@@ -1,18 +1,13 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { env } from "@/core/env";
+import { CoachInsights } from "@/core/types";
 
 const ai = new GoogleGenAI({ apiKey: env.GEMINI_API_KEY });
 
-export interface MicroChallenge {
-  title: string;
-  action: string;
-  saved_co2_kg: number;
-}
-
-export interface CoachInsights {
-  eco_score: number; // Score from 0 to 100
-  context_summary: string; // Dynamic analysis of logs
-  micro_challenges: MicroChallenge[]; // 3 personalized challenges
+export interface HistoricalLogInput {
+  category: string;
+  calculated_co2_kg: number;
+  logged_at: string;
 }
 
 /**
@@ -21,7 +16,7 @@ export interface CoachInsights {
  * @param currentStreak Current logged in streak count
  */
 export async function generateContextualInsights(
-  userLogsHistory: { category: string; calculated_co2_kg: number; logged_at: string }[],
+  userLogsHistory: HistoricalLogInput[],
   currentStreak: number
 ): Promise<CoachInsights> {
   const fallbackInsights: CoachInsights = {
