@@ -38,5 +38,6 @@ export interface MicroChallenge {
 export interface CoachInsights {
   eco_score: number;
   context_summary: string;
-  micro_challenges: MicroChallenge[];
+  carbon_credits_offset_estimate: number;
+  active_micro_challenges: MicroChallenge[];
 }

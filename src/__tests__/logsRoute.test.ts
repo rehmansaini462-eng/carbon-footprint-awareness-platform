@@ -132,7 +132,8 @@ describe("POST /api/logs API Route Handler", () => {
     (generateContextualInsights as jest.Mock).mockResolvedValue({
       eco_score: 85,
       context_summary: "Your transport emissions are looking optimized.",
-      micro_challenges: [
+      carbon_credits_offset_estimate: 0.0012,
+      active_micro_challenges: [
         { title: "Carpooling", action: "Carpool with one colleague today.", saved_co2_kg: 1.2 },
       ],
     });
@@ -153,6 +154,10 @@ describe("POST /api/logs API Route Handler", () => {
     expect(json.data.streak).toBe(3); // Incremented from 2 because last log was yesterday
     expect(json.data.gainedXp).toBe(30); // 15 + (3 * 5) = 30
     expect(json.data.totalXp).toBe(70); // 40 + 30 = 70
+    expect(json.data.aiCoachResponse.eco_score).toBe(85);
+    expect(json.data.aiCoachResponse.carbon_credits_offset_estimate).toBe(0.0012);
+    expect(json.data.aiCoachResponse.active_micro_challenges).toHaveLength(1);
+    expect(json.data.aiCoachResponse.active_micro_challenges[0].title).toBe("Carpooling");
   });
 
   // Scenario B: Malformed Payload Edge-cases
@@ -241,6 +246,20 @@ describe("POST /api/logs API Route Handler", () => {
     // Mock parseNaturalLanguageInput to throw an API Network / Quota error
     (parseNaturalLanguageInput as jest.Mock).mockRejectedValue(new Error("Gemini API Quota Exceeded"));
 
+    // Mock Gemini Coach to return fallback insights
+    (generateContextualInsights as jest.Mock).mockResolvedValue({
+      eco_score: 75,
+      context_summary: "Great job keeping up your logging streak!",
+      carbon_credits_offset_estimate: 0.0047,
+      active_micro_challenges: [
+        {
+          title: "Green Transit Shift",
+          action: "Take public transit, walk, or cycle for one trip today instead of driving.",
+          saved_co2_kg: 2.4,
+        },
+      ],
+    });
+
     const req = createMockRequest({
       prompt: "I used 10kWh of electricity",
       userId: "c8d8c8d8-c8d8-4c8d-8c8d-8c8d8c8d8c8d",
@@ -262,5 +281,8 @@ describe("POST /api/logs API Route Handler", () => {
     expect(json.success).toBe(true);
     expect(json.data.category).toBe("Food");
     expect(json.data.calculatedCo2Kg).toBe(0); // vegan value 0 = 0kg
+    expect(json.data.aiCoachResponse.eco_score).toBe(75);
+    expect(json.data.aiCoachResponse.carbon_credits_offset_estimate).toBe(0.0047);
+    expect(json.data.aiCoachResponse.active_micro_challenges).toHaveLength(1);
   });
 });

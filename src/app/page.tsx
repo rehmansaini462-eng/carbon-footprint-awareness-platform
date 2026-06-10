@@ -48,7 +48,8 @@ export default function DashboardPage() {
   const [insights, setInsights] = useState<CoachInsights>({
     eco_score: 80,
     context_summary: "Welcome to Agentic Carbon Coach. Log your habits below using natural language (e.g., 'I drove 15km in my petrol car today' or 'I ate a vegan diet today') to receive personalized sustainability challenges.",
-    micro_challenges: [
+    carbon_credits_offset_estimate: 0.0035,
+    active_micro_challenges: [
       {
         title: "Cold Water Wash",
         action: "Do your laundry with cold water instead of hot to save energy.",
@@ -171,7 +172,8 @@ export default function DashboardPage() {
     setInsights({
       eco_score: 80,
       context_summary: "Session reset. Type a new logging prompt below.",
-      micro_challenges: [
+      carbon_credits_offset_estimate: 0.0035,
+      active_micro_challenges: [
         {
           title: "Cold Water Wash",
           action: "Do your laundry with cold water instead of hot to save energy.",
@@ -258,11 +260,11 @@ export default function DashboardPage() {
         <div className="lg:col-span-7 flex flex-col gap-8">
           
           {/* Section: Profile Stats */}
-          <section aria-label="User profile metrics dashboard" className="bg-slate-900/60 backdrop-blur-md border border-slate-800/80 p-6 rounded-2xl grid grid-cols-3 gap-4 shadow-xl">
+          <section aria-label="User profile metrics dashboard" className="bg-slate-900/60 backdrop-blur-md border border-slate-800/80 p-6 rounded-2xl grid grid-cols-2 md:grid-cols-4 gap-4 shadow-xl">
             {/* Stat 1: Streak */}
             <article className="flex flex-col items-center justify-center p-3 bg-slate-950/40 rounded-xl border border-slate-800/50">
               <div className="flex items-center gap-1.5 text-orange-400">
-                <Flame className="h-5 w-5 fill-current" />
+                <Flame className="h-5 w-5 fill-current" aria-hidden="true" />
                 <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Streak</span>
               </div>
               <p className="text-2xl md:text-3xl font-black mt-1 text-slate-100">{streak} <span className="text-xs text-slate-400 font-normal">days</span></p>
@@ -271,25 +273,36 @@ export default function DashboardPage() {
             {/* Stat 2: XP */}
             <article className="flex flex-col items-center justify-center p-3 bg-slate-950/40 rounded-xl border border-slate-800/50">
               <div className="flex items-center gap-1.5 text-cyan-400">
-                <Cpu className="h-5 w-5" />
+                <Cpu className="h-5 w-5" aria-hidden="true" />
                 <span className="text-xs font-bold uppercase tracking-wider text-slate-400">XP Points</span>
               </div>
               <p className="text-2xl md:text-3xl font-black mt-1 text-slate-100">{xp}</p>
             </article>
 
-            {/* Stat 3: Eco Level */}
+            {/* Stat 3: Eco Score */}
             <article className="flex flex-col items-center justify-center p-3 bg-slate-950/40 rounded-xl border border-slate-800/50">
               <div className="flex items-center gap-1.5 text-emerald-400">
-                <Leaf className="h-5 w-5" />
+                <Leaf className="h-5 w-5" aria-hidden="true" />
                 <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Eco Score</span>
               </div>
               <p className="text-2xl md:text-3xl font-black mt-1 text-slate-100">{insights.eco_score}</p>
             </article>
 
+            {/* Stat 4: Carbon Credits */}
+            <article className="flex flex-col items-center justify-center p-3 bg-slate-950/40 rounded-xl border border-slate-800/50">
+              <div className="flex items-center gap-1.5 text-amber-400">
+                <Award className="h-5 w-5" aria-hidden="true" />
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Offset Credits</span>
+              </div>
+              <p className="text-2xl md:text-3xl font-black mt-1 text-slate-100 font-mono">
+                {insights.carbon_credits_offset_estimate ? insights.carbon_credits_offset_estimate.toFixed(4) : "0.0000"}
+              </p>
+            </article>
+
             {/* Badges Display Row */}
-            <div className="col-span-3 mt-2 flex flex-wrap items-center gap-2 border-t border-slate-800/60 pt-4">
+            <div className="col-span-2 md:col-span-4 mt-2 flex flex-wrap items-center gap-2 border-t border-slate-800/60 pt-4">
               <span className="text-xs font-bold text-slate-400 mr-1 flex items-center gap-1">
-                <Award className="h-4 w-4 text-amber-400" /> Earned Badges:
+                <Award className="h-4 w-4 text-amber-400" aria-hidden="true" /> Earned Badges:
               </span>
               {badges.length === 0 ? (
                 <span className="text-xs text-slate-500 italic">No badges earned yet. Complete streaks or gain 100 XP!</span>
@@ -299,6 +312,7 @@ export default function DashboardPage() {
                     key={b}
                     className="text-[10px] uppercase font-extrabold tracking-wider bg-amber-500/10 border border-amber-500/30 text-amber-300 px-2.5 py-1 rounded-md"
                   >
+                    <span className="sr-only">Badge unlocked: </span>
                     {b.replace("_", " ")}
                   </span>
                 ))
@@ -416,7 +430,7 @@ export default function DashboardPage() {
               </div>
             ) : (
               <div className="space-y-4">
-                <div className="h-44 w-full relative">
+                <div role="region" aria-label="Interactive Carbon Emission Pie Chart" className="h-44 w-full relative">
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                       <Pie
@@ -476,13 +490,13 @@ export default function DashboardPage() {
             </h3>
 
             <div className="space-y-4 flex-1">
-              {insights.micro_challenges.map((c, idx) => (
+              {insights.active_micro_challenges.map((c, idx) => (
                 <article
                   key={idx}
                   className="bg-slate-950/60 border border-slate-850 p-3.5 rounded-xl flex gap-3 transition-all hover:border-emerald-500/20"
                 >
                   <div className="mt-0.5 text-emerald-400">
-                    <CheckCircle2 className="h-5 w-5" />
+                    <CheckCircle2 className="h-5 w-5" aria-hidden="true" />
                   </div>
                   <div className="flex-1">
                     <div className="flex items-center justify-between">

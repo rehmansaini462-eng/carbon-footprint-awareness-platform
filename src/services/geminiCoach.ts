@@ -22,7 +22,8 @@ export async function generateContextualInsights(
   const fallbackInsights: CoachInsights = {
     eco_score: 75,
     context_summary: "Great job keeping up your logging streak! Try reducing red meat or opting for public transit when possible to lower your impact.",
-    micro_challenges: [
+    carbon_credits_offset_estimate: 0.0047,
+    active_micro_challenges: [
       {
         title: "Green Transit Shift",
         action: "Take public transit, walk, or cycle for one trip today instead of driving.",
@@ -48,12 +49,13 @@ export async function generateContextualInsights(
       : "No recent logging activity recorded.";
 
     const systemInstruction = `
-You are an expert AI sustainability coach. Your role is to analyze a user's recent carbon logging history and active logging streak, calculate a dynamic 'eco_score' (from 0 to 100, where 100 means zero emission and high streak engagement), provide a highly specific context summary, and output exactly 3 personalized micro-challenges.
+You are an expert AI sustainability coach. Your role is to analyze a user's recent carbon logging history and active logging streak, calculate a dynamic 'eco_score' (from 0 to 100, where 100 means zero emission and high streak engagement), provide a highly specific context summary, estimate carbon credits offset values, and output exactly 3 personalized active micro-challenges.
 
 Rules:
 1. "eco_score": Compute a realistic score. Adjust it upward for higher logging streaks (currentStreak: ${currentStreak}) and lower average CO2 outputs.
 2. "context_summary": Write a motivating, data-backed summary. If Transport is the highest emission category, explicitly state that and address how they can improve.
-3. "micro_challenges": Generate EXACTLY 3 challenges. Each challenge must contain:
+3. "carbon_credits_offset_estimate": Estimate the carbon credits the user would offset by completing all 3 challenges. Note that 1 carbon credit corresponds to 1 metric ton of CO2 offset (1000 kg CO2 = 1 credit). If the total CO2 saved is 4.7 kg, the credits value would be 0.0047. Output this as a float number.
+4. "active_micro_challenges": Generate EXACTLY 3 challenges. Each challenge must contain:
    - "title": A catchy, action-oriented title.
    - "action": Specific, low-effort action the user can complete today.
    - "saved_co2_kg": A realistic estimate of CO2 saved (as a number in kg) if they perform the action.
@@ -75,7 +77,10 @@ Rules:
             context_summary: {
               type: Type.STRING,
             },
-            micro_challenges: {
+            carbon_credits_offset_estimate: {
+              type: Type.NUMBER,
+            },
+            active_micro_challenges: {
               type: Type.ARRAY,
               items: {
                 type: Type.OBJECT,
@@ -88,7 +93,7 @@ Rules:
               },
             },
           },
-          required: ["eco_score", "context_summary", "micro_challenges"],
+          required: ["eco_score", "context_summary", "carbon_credits_offset_estimate", "active_micro_challenges"],
         },
       },
     });

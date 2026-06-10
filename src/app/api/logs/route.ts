@@ -13,6 +13,20 @@ interface LogRequestPayload {
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /**
+ * Defensive Sanitizer Utility
+ * Strips script tags, general HTML elements, and tag segments to prevent cross-site scripting (XSS)
+ * or injection vectors into database columns and downstream API integrations.
+ */
+function sanitizeInput(text: string): string {
+  if (!text) return "";
+  return text
+    .replace(/<script[^>]*>([\S\s]*?)<\/script>/gi, "") // Remove script blocks
+    .replace(/<[^>]*>/g, "")                           // Remove any other HTML tags
+    .replace(/javascript:/gi, "")                       // Remove javascript URI targets
+    .trim();
+}
+
+/**
  * POST /api/logs
  * Parses natural language input, calculates carbon footprint, records the log,
  * and updates user streak/XP & coaching insights in a single robust workflow.
@@ -41,7 +55,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Missing or invalid userId (UUID expected)." }, { status: 400 });
     }
 
-    // 2. Fetch User profile (or insert on-the-fly to ensure seamless user testing experience)
+    // Sanitize user inputs defensively before processing
+    const sanitizedPrompt = sanitizeInput(prompt);
+    if (sanitizedPrompt.length === 0) {
+      return NextResponse.json({ error: "Rejected input: Prompt contains only HTML/Script injection templates." }, { status: 400 });
+    }
+
+    // 2. Fetch User profile (Supabase Client uses implicit prepared statements / parameter binding, securing SQL)
     const { data: userProfile, error: profileError } = await supabaseAdmin
       .from("users")
       .select("id, email, created_at, current_streak, xp, badges")
@@ -79,7 +99,7 @@ export async function POST(request: Request) {
     }
 
     // 3. Process natural language query through Gemini Parser Engine
-    const parsedInput = await parseNaturalLanguageInput(prompt);
+    const parsedInput = await parseNaturalLanguageInput(sanitizedPrompt);
 
     // 4. Calculate emission footprint in CO2-kg
     const calculated_co2_kg = calculateEmission(
@@ -139,14 +159,14 @@ export async function POST(request: Request) {
       updatedBadges.push("eco_elite");
     }
 
-    // 6. DB Updates - Log record & User profile changes (Run sequentially to ensure isolated states)
+    // 6. DB Updates - Log record & User profile changes (Run sequentially using parameterized SDK mappings)
     const { error: logInsertError } = await supabaseAdmin
       .from("carbon_logs")
       .insert({
         user_id: userId,
         category: parsedInput.category,
         metrics_json: {
-          userInput: prompt,
+          userInput: sanitizedPrompt,
           specificType: parsedInput.specificType,
           rawValue: parsedInput.value,
         },
