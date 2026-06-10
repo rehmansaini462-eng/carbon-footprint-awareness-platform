@@ -243,6 +243,7 @@ export async function POST(request: Request) {
     );
   } catch (err) {
     console.error("[SERVER_ROUTE_ERROR] Unhandled exception occurred in route /api/logs:", err);
+    console.error("API Pipeline Error:", err);
     return NextResponse.json(
       { error: "An unexpected error occurred while processing your request." },
       { status: 500 }

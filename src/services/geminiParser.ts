@@ -88,7 +88,52 @@ Guidelines:
     return result;
   } catch (error) {
     console.error("[GEMINI_PARSER_ERROR] Parsing failed for prompt:", userInput, error);
-    // Robust fallback to avoid app crashing, returning zero-impact log
+    console.error("API Pipeline Error:", error);
+    
+    // Heuristic keyword fallback routing
+    const lowerInput = userInput.toLowerCase();
+    
+    // Extract any number from the input if possible
+    const numberMatch = lowerInput.match(/\d+/);
+    const inferredValue = numberMatch ? parseFloat(numberMatch[0]) : 10;
+    
+    if (/(car|petrol|diesel|drive|transport|km|kilometer|ride|travel|vehicle|metro|train|bus|flight|fly)/i.test(lowerInput)) {
+      let specificType = "petrol_car";
+      if (lowerInput.includes("diesel")) specificType = "diesel_car";
+      else if (lowerInput.includes("ev") || lowerInput.includes("electric")) specificType = "ev";
+      else if (lowerInput.includes("metro") || lowerInput.includes("bus") || lowerInput.includes("transit")) specificType = "public_transit";
+      
+      return {
+        category: "Transport",
+        specificType,
+        value: inferredValue || 10,
+      };
+    }
+    
+    if (/(electricity|ac|power|energy|kwh|utility|heater|appliance)/i.test(lowerInput)) {
+      return {
+        category: "Energy",
+        specificType: "electricity",
+        value: inferredValue || 10,
+      };
+    }
+    
+    if (/(eat|food|diet|meal|vegan|vegetarian|meat|beef|chicken|fish)/i.test(lowerInput)) {
+      let specificType = "vegan";
+      const val = 1;
+      if (lowerInput.includes("meat")) {
+        specificType = "meat_heavy";
+      } else if (lowerInput.includes("veg")) {
+        specificType = "vegetarian";
+      }
+      return {
+        category: "Food",
+        specificType,
+        value: numberMatch ? parseInt(numberMatch[0]) : val,
+      };
+    }
+
+    // Default ultimate fallback
     return {
       category: "Food",
       specificType: "vegan",
