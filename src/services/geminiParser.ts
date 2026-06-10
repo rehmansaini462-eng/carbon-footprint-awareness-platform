@@ -2,8 +2,13 @@ import { GoogleGenAI, Type } from "@google/genai";
 import { env } from "@/core/env";
 import { CarbonCategory, CARBON_COEFFICIENTS } from "./carbonCalculator";
 
-// Initialize the Google Gen AI client with validated credentials
-const ai = new GoogleGenAI({ apiKey: env.GEMINI_API_KEY });
+let aiInstance: GoogleGenAI | null = null;
+function getAI(): GoogleGenAI {
+  if (!aiInstance) {
+    aiInstance = new GoogleGenAI({ apiKey: env.GEMINI_API_KEY });
+  }
+  return aiInstance;
+}
 
 export interface ParsedInput {
   category: CarbonCategory;
@@ -42,7 +47,7 @@ Guidelines:
 `;
 
   try {
-    const response = await ai.models.generateContent({
+    const response = await getAI().models.generateContent({
       model: "gemini-2.5-flash",
       contents: userInput,
       config: {

@@ -2,7 +2,13 @@ import { GoogleGenAI, Type } from "@google/genai";
 import { env } from "@/core/env";
 import { CoachInsights } from "@/core/types";
 
-const ai = new GoogleGenAI({ apiKey: env.GEMINI_API_KEY });
+let aiInstance: GoogleGenAI | null = null;
+function getAI(): GoogleGenAI {
+  if (!aiInstance) {
+    aiInstance = new GoogleGenAI({ apiKey: env.GEMINI_API_KEY });
+  }
+  return aiInstance;
+}
 
 export interface HistoricalLogInput {
   category: string;
@@ -62,7 +68,7 @@ Rules:
    - If the user's transportation carbon is high, at least two challenges must target public transit, carpooling, or walking.
 `;
 
-    const response = await ai.models.generateContent({
+    const response = await getAI().models.generateContent({
       model: "gemini-2.5-flash",
       contents: `User logging streak: ${currentStreak} days.\nHistory logs:\n${historyText}`,
       config: {
