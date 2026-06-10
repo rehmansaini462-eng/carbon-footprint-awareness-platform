@@ -92,7 +92,19 @@ export default function DashboardPage() {
       if (savedXp) setXp(parseInt(savedXp, 10));
       if (savedBadges) setBadges(JSON.parse(savedBadges));
       if (savedLogs) setLogs(JSON.parse(savedLogs));
-      if (savedInsights) setInsights(JSON.parse(savedInsights));
+      if (savedInsights) {
+        try {
+          const parsed = JSON.parse(savedInsights);
+          // Normalize old local storage format
+          if (parsed && !parsed.active_micro_challenges && parsed.micro_challenges) {
+            parsed.active_micro_challenges = parsed.micro_challenges;
+            delete parsed.micro_challenges;
+          }
+          setInsights(parsed);
+        } catch (e) {
+          console.error("Failed to parse saved insights", e);
+        }
+      }
     }
   }, []);
 
@@ -490,7 +502,7 @@ export default function DashboardPage() {
             </h3>
 
             <div className="space-y-4 flex-1">
-              {insights.active_micro_challenges.map((c, idx) => (
+              {(insights.active_micro_challenges || []).map((c, idx) => (
                 <article
                   key={idx}
                   className="bg-slate-950/60 border border-slate-850 p-3.5 rounded-xl flex gap-3 transition-all hover:border-emerald-500/20"
