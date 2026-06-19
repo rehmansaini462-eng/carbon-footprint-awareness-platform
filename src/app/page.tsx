@@ -20,7 +20,7 @@ import {
   Tooltip 
 } from "recharts";
 
-import { CarbonLog, CoachInsights } from "@/core/types";
+import { CarbonLog, CoachInsights, MicroChallenge } from "@/core/types";
 
 const CATEGORY_COLORS = {
   Transport: "#06b6d4", // Cyan
@@ -90,17 +90,17 @@ export default function DashboardPage() {
 
       if (savedStreak) setStreak(parseInt(savedStreak, 10));
       if (savedXp) setXp(parseInt(savedXp, 10));
-      if (savedBadges) setBadges(JSON.parse(savedBadges));
-      if (savedLogs) setLogs(JSON.parse(savedLogs));
+      if (savedBadges) setBadges(JSON.parse(savedBadges) as string[]);
+      if (savedLogs) setLogs(JSON.parse(savedLogs) as CarbonLog[]);
       if (savedInsights) {
         try {
-          const parsed = JSON.parse(savedInsights);
+          const parsed = JSON.parse(savedInsights) as CoachInsights & { micro_challenges?: unknown[] };
           // Normalize old local storage format
           if (parsed && !parsed.active_micro_challenges && parsed.micro_challenges) {
-            parsed.active_micro_challenges = parsed.micro_challenges;
-            delete parsed.micro_challenges;
+            parsed.active_micro_challenges = parsed.micro_challenges as MicroChallenge[];
+            delete (parsed as { micro_challenges?: unknown[] }).micro_challenges;
           }
-          setInsights(parsed);
+          setInsights(parsed as CoachInsights);
         } catch (e) {
           console.error("Failed to parse saved insights", e);
         }

@@ -41,7 +41,7 @@ export async function POST(request: Request) {
 
     let body: Partial<LogRequestPayload>;
     try {
-      body = await request.json();
+      body = (await request.json()) as Partial<LogRequestPayload>;
     } catch {
       return NextResponse.json({ error: "Malformed request body." }, { status: 400 });
     }

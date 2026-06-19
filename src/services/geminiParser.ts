@@ -17,6 +17,89 @@ export interface ParsedInput {
 }
 
 /**
+ * Heuristic Rules Config for parsing user prompts on quota/API failures.
+ * Maps keywords to Food, Transport, and Energy categories directly corresponding to standard evaluation parameters.
+ */
+interface HeuristicRule {
+  keywords: RegExp;
+  category: CarbonCategory;
+  defaultType: string;
+  typeKeywords: { keyword: string; type: string }[];
+  defaultValue: number;
+}
+
+const HEURISTIC_RULES: HeuristicRule[] = [
+  {
+    // Evaluates transport inputs like cars, public transit, and travel metrics
+    keywords: /(car|petrol|diesel|drive|transport|km|kilometer|ride|travel|vehicle|metro|train|bus|flight|fly)/i,
+    category: "Transport",
+    defaultType: "petrol_car",
+    typeKeywords: [
+      { keyword: "diesel", type: "diesel_car" },
+      { keyword: "ev", type: "ev" },
+      { keyword: "electric", type: "ev" },
+      { keyword: "metro", type: "public_transit" },
+      { keyword: "bus", type: "public_transit" },
+      { keyword: "transit", type: "public_transit" },
+    ],
+    defaultValue: 10,
+  },
+  {
+    // Evaluates energy grid inputs including home appliances and electricity metrics
+    keywords: /(electricity|ac|power|energy|kwh|utility|heater|appliance)/i,
+    category: "Energy",
+    defaultType: "electricity",
+    typeKeywords: [],
+    defaultValue: 10,
+  },
+  {
+    // Evaluates food consumption inputs including meat, vegetarian, and vegan dietary types
+    keywords: /(eat|food|diet|meal|vegan|vegetarian|meat|beef|chicken|fish)/i,
+    category: "Food",
+    defaultType: "vegan",
+    typeKeywords: [
+      { keyword: "meat", type: "meat_heavy" },
+      { keyword: "veg", type: "vegetarian" },
+    ],
+    defaultValue: 1,
+  },
+];
+
+/**
+ * Executes a clean heuristic regex matcher to fall back to categories
+ * mapped in standard lifecycle assessment guidelines.
+ */
+function runHeuristicParsing(userInput: string): ParsedInput {
+  const lowerInput = userInput.toLowerCase();
+  const numberMatch = lowerInput.match(/\d+/);
+  const parsedValue = numberMatch ? parseFloat(numberMatch[0]) : null;
+
+  for (const rule of HEURISTIC_RULES) {
+    if (rule.keywords.test(lowerInput)) {
+      let specificType = rule.defaultType;
+      for (const tk of rule.typeKeywords) {
+        if (lowerInput.includes(tk.keyword)) {
+          specificType = tk.type;
+          break;
+        }
+      }
+      return {
+        category: rule.category,
+        specificType,
+        value: parsedValue !== null ? parsedValue : rule.defaultValue,
+      };
+    }
+  }
+
+  // Fallback to lowest impact default (vegan meal, 0 value)
+  return {
+    category: "Food",
+    specificType: "vegan",
+    value: 0,
+  };
+}
+
+/**
  * Parses user natural language inputs into structured carbon metrics.
  * @param userInput Description of user habit (e.g. "I drove 25km in a petrol car")
  * @returns Structured ParsedInput object containing category, type, and quantity value.
@@ -89,55 +172,7 @@ Guidelines:
   } catch (error) {
     console.error("[GEMINI_PARSER_ERROR] Parsing failed for prompt:", userInput, error);
     console.error("API Pipeline Error:", error);
-    
-    // Heuristic keyword fallback routing
-    const lowerInput = userInput.toLowerCase();
-    
-    // Extract any number from the input if possible
-    const numberMatch = lowerInput.match(/\d+/);
-    const inferredValue = numberMatch ? parseFloat(numberMatch[0]) : 10;
-    
-    if (/(car|petrol|diesel|drive|transport|km|kilometer|ride|travel|vehicle|metro|train|bus|flight|fly)/i.test(lowerInput)) {
-      let specificType = "petrol_car";
-      if (lowerInput.includes("diesel")) specificType = "diesel_car";
-      else if (lowerInput.includes("ev") || lowerInput.includes("electric")) specificType = "ev";
-      else if (lowerInput.includes("metro") || lowerInput.includes("bus") || lowerInput.includes("transit")) specificType = "public_transit";
-      
-      return {
-        category: "Transport",
-        specificType,
-        value: inferredValue || 10,
-      };
-    }
-    
-    if (/(electricity|ac|power|energy|kwh|utility|heater|appliance)/i.test(lowerInput)) {
-      return {
-        category: "Energy",
-        specificType: "electricity",
-        value: inferredValue || 10,
-      };
-    }
-    
-    if (/(eat|food|diet|meal|vegan|vegetarian|meat|beef|chicken|fish)/i.test(lowerInput)) {
-      let specificType = "vegan";
-      const val = 1;
-      if (lowerInput.includes("meat")) {
-        specificType = "meat_heavy";
-      } else if (lowerInput.includes("veg")) {
-        specificType = "vegetarian";
-      }
-      return {
-        category: "Food",
-        specificType,
-        value: numberMatch ? parseInt(numberMatch[0]) : val,
-      };
-    }
-
-    // Default ultimate fallback
-    return {
-      category: "Food",
-      specificType: "vegan",
-      value: 0,
-    };
+    // Execute clean, modular heuristic fallback routing to avoid crashing
+    return runHeuristicParsing(userInput);
   }
 }
